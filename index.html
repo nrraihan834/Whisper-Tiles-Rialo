@@ -1,235 +1,267 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Whisper Tiles — Rialo</title>
-  <style>
-    :root {
-      --logo-url: url('https://pbs.twimg.com/profile_images/1950265537784926208/qbjSWMDP_400x400.jpg');
-      --bg: #07020c;
-      --fg: #e7e3dc;
-      --cyan: #00ffff;
-      --accent: #b884ff;
-    }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0;
-      background: radial-gradient(1200px 700px at 50% -10%, #201330 0%, #0d0816 35%, var(--bg) 70%);
-      color: var(--fg);
-      font-family: 'Cinzel', serif;
-      display: grid;
-      place-items: center;
-    }
-    .wrap { width: min(92vw, 840px); text-align: center; }
-    h1 { margin: .25rem 0 0; letter-spacing: 1px; font-weight: 700; }
-    .sub { opacity: .8; margin: .25rem 0 1rem; font-size: .95rem; }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Whisper Tiles — Rialo (Flip Edition)</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --logo-url: url('https://pbs.twimg.com/profile_images/1950265537784926208/qbjSWMDP_400x400.jpg');
+    --bg:#07020c; --fg:#e7e3dc; --cyan:#00ffff; --good:#71ffa7; --bad:#ff5e7e;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:radial-gradient(1200px 700px at 50% -10%, #201330 0%, #0d0816 35%, var(--bg) 70%);
+    color:var(--fg); font-family:'Cinzel',serif; display:grid; place-items:center;
+  }
+  .wrap{width:min(92vw,840px); text-align:center}
+  h1{margin:.25rem 0 0}
+  .sub{opacity:.85; margin:.25rem 0 1rem}
 
-    .hud { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center; margin: .5rem 0 1rem; }
-    .pill { border: 1px solid #2b2b36; padding: .35rem .7rem; border-radius: 999px; background: #111019; box-shadow: inset 0 0 12px #0b0b14; }
-    .pill strong { color: var(--cyan); }
+  .hud{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin:.5rem 0 1rem}
+  .pill{border:1px solid #2b2b36;padding:.35rem .7rem;border-radius:999px;background:#111019;box-shadow:inset 0 0 12px #0b0b14}
+  .pill strong{color:var(--cyan)}
 
-    #grid { display: grid; gap: 12px; justify-content: center; margin: 0 auto 1rem; }
+  #grid{display:grid;gap:14px;justify-content:center;margin:0 auto 1rem}
 
-    .tile {
-      position: relative;
-      width: 84px;
-      aspect-ratio: 1/1;
-      border-radius: 14px;
-      background: rgba(0, 255, 255, .06);
-      border: 1px solid rgba(0, 255, 255, .18);
-      box-shadow: 0 0 0 0 rgba(0, 255, 255, .0), inset 0 0 24px rgba(0, 0, 0, .35);
-      cursor: pointer;
-      transition: transform .14s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, filter .2s ease;
-      overflow: hidden;
-    }
-    .tile::before {
-      content: "";
-      position: absolute;
-      inset: 12% 12% 12% 12%;
-      background-image: var(--logo-url);
-      background-size: contain;
-      background-position: center;
-      background-repeat: no-repeat;
-      opacity: .65;
-      filter: grayscale(1) contrast(1.05);
-      transition: opacity .25s ease, filter .25s ease, transform .2s ease;
-    }
-    .tile.reveal {
-      background: radial-gradient(120% 120% at 50% 40%, rgba(0, 255, 255, .45), rgba(0, 255, 255, .12) 55%, transparent 60%);
-      border-color: rgba(0, 255, 255, .6);
-      box-shadow: 0 0 24px 6px rgba(0, 255, 255, .35), inset 0 0 40px rgba(0, 255, 255, .25);
-    }
-    .tile.reveal::before {
-      opacity: 1;
-      filter: grayscale(0) drop-shadow(0 0 8px rgba(0, 255, 255, .6));
-      transform: scale(1.04);
-    }
+  /* --- Card 3D flip --- */
+  .card{width:90px;aspect-ratio:1;border-radius:14px;perspective:800px}
+  .inner{
+    position:relative;width:100%;height:100%;transform-style:preserve-3d;
+    transition:transform .45s cubic-bezier(.2,.8,.2,1);
+  }
+  .card.flipped .inner{transform:rotateY(180deg)}
+  .face{
+    position:absolute; inset:0; border-radius:14px; backface-visibility:hidden; overflow:hidden;
+    border:1px solid rgba(0,255,255,.18); box-shadow:inset 0 0 24px rgba(0,0,0,.35);
+  }
+  /* back (hidden) = black tile */
+  .back{
+    background:#000; 
+  }
+  /* subtle grid line + cyan edge */
+  .back::after{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(0,255,255,.08), transparent 35%),
+               radial-gradient(120% 80% at 50% 0%, rgba(0,255,255,.08), transparent 60%);
+    pointer-events:none;
+  }
+  /* front (revealed) holds logo or X) */
+  .front{
+    transform:rotateY(180deg);
+    display:grid; place-items:center; background:#080a10;
+  }
+  .front .logo{
+    width:70%; height:70%; background-image:var(--logo-url);
+    background-size:cover; background-position:center; border-radius:12px;
+    filter:drop-shadow(0 0 10px rgba(0,255,255,.6));
+  }
+  .front .wrong{
+    width:64%; aspect-ratio:1; border-radius:10px; display:grid; place-items:center;
+    background:rgba(255,94,126,.08); border:2px solid var(--bad);
+    box-shadow:0 0 18px rgba(255,94,126,.35), inset 0 0 30px rgba(255,94,126,.15);
+    font-weight:700; color:#fff; text-shadow:0 0 10px rgba(255,94,126,.7);
+  }
+  .front .wrong::before{
+    content:"✖"; font-size:48px; line-height:1;
+  }
 
-    .tile.clicked { transform: scale(.96); }
-    .tile.good { box-shadow: 0 0 22px 8px rgba(113, 255, 167, .35); border-color: rgba(113, 255, 167, .7); }
-    .tile.bad { box-shadow: 0 0 22px 8px rgba(255, 94, 126, .35); border-color: rgba(255, 94, 126, .7); }
+  /* signal during reveal (no flipping, just a pulse on back) */
+  .signal .back{
+    box-shadow:0 0 24px 6px rgba(0,255,255,.35), inset 0 0 40px rgba(0,255,255,.25);
+    border-color:rgba(0,255,255,.6);
+    animation:pulse .6s ease-in-out;
+  }
+  @keyframes pulse{0%{filter:brightness(1)}50%{filter:brightness(1.4)}100%{filter:brightness(1)}}
 
-    .btn {
-      --glow: var(--cyan);
-      appearance: none;
-      border: 0;
-      cursor: pointer;
-      font: inherit;
-      color: #0b1020;
-      background: linear-gradient(90deg, var(--glow), #9cf3ff);
-      padding: .8rem 1.2rem;
-      border-radius: 12px;
-      font-weight: 700;
-      letter-spacing: .2px;
-      box-shadow: 0 8px 26px rgba(0, 255, 255, .25), 0 0 24px rgba(0, 255, 255, .15) inset;
-      transition: transform .12s ease, filter .2s ease, box-shadow .2s ease;
-    }
-    .btn:hover { transform: translateY(-1px); }
-    .btn:active { transform: translateY(0) scale(.98); }
-  </style>
+  /* click feedback */
+  .card.clickfx .back{transform:scale(.98)}
+  .btn{
+    --glow: var(--cyan);
+    appearance:none;border:0;cursor:pointer;font:inherit;color:#0b1020;
+    background:linear-gradient(90deg,var(--glow),#9cf3ff);
+    padding:.8rem 1.2rem;border-radius:12px;font-weight:700;letter-spacing:.2px;
+    box-shadow:0 8px 26px rgba(0,255,255,.25), 0 0 24px rgba(0,255,255,.15) inset;
+    transition:transform .12s ease;
+  }
+  .btn:hover{transform:translateY(-1px)}
+  .btn:active{transform:translateY(0) scale(.98)}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Whisper Tiles</h1>
-    <div class="sub">Memorize the glowing sequence, then repeat it. (Rialo Edition)</div>
+  <div class="wrap" role="application" aria-label="Whisper Tiles flip memory game">
+    <h1>Whisper Tiles — Flip Edition</h1>
+    <div class="sub">All cards are hidden. Watch the signal, then flip the right ones. Rialo-style ✨</div>
 
-    <div class="hud">
+    <div class="hud" aria-live="polite">
       <div class="pill">Level: <strong id="level">1</strong></div>
       <div class="pill">Grid: <strong id="gridSize">3 × 3</strong></div>
       <div class="pill">Streak: <strong id="streak">0</strong></div>
     </div>
 
-    <div id="grid"></div>
-    <p id="message">Click Start to begin.</p>
+    <div id="grid" aria-label="Tile grid"></div>
+    <p id="message">Press Start to begin.</p>
     <button id="startBtn" class="btn">Start</button>
   </div>
 
-  <script>
-    const START_GRID = 3;
-    const REVEAL_MS = 650;
-    const STEP_PAUSE = 220;
-    const NEXT_DELAY = 750;
-    const GROW_EVERY = 3;
+<script>
+/* -------- Config -------- */
+const START_GRID = 3;
+const REVEAL_MS  = 650;   // signal glow duration
+const STEP_PAUSE = 220;   // pause between signals
+const NEXT_DELAY = 800;   // delay before next round
+const GROW_EVERY = 3;     // grow grid every N levels
+const MAX_GRID   = 7;
 
-    let gridSize = START_GRID;
-    let level = 1;
-    let sequence = [];
-    let input = [];
-    let accepting = false;
-    let streak = 0;
+/* -------- State -------- */
+let gridSize = START_GRID;
+let level = 1;
+let sequence = [];     // array of indexes (the correct sequence)
+let input = [];        // player's current input
+let accepting = false;
+let streak = 0;
 
-    const gridEl = document.getElementById('grid');
-    const levelEl = document.getElementById('level');
-    const sizeEl = document.getElementById('gridSize');
-    const streakEl = document.getElementById('streak');
-    const msgEl = document.getElementById('message');
-    const startBtn = document.getElementById('startBtn');
+const gridEl   = document.getElementById('grid');
+const levelEl  = document.getElementById('level');
+const sizeEl   = document.getElementById('gridSize');
+const streakEl = document.getElementById('streak');
+const msgEl    = document.getElementById('message');
+const startBtn = document.getElementById('startBtn');
 
-    startBtn.addEventListener('click', startGame);
+startBtn.addEventListener('click', startGame);
 
-    function startGame() {
-      level = 1;
-      gridSize = START_GRID;
-      sequence = [];
-      input = [];
-      streak = 0;
-      updateHud();
-      buildGrid();
-      nextLevel();
-    }
+function startGame(){
+  level = 1; gridSize = START_GRID; sequence = []; input = []; streak = 0;
+  updateHud();
+  buildGrid();
+  nextLevel();
+}
 
-    function updateHud() {
-      levelEl.textContent = level;
-      sizeEl.textContent = `${gridSize} × ${gridSize}`;
-      streakEl.textContent = streak;
-    }
+function updateHud(){
+  levelEl.textContent = level;
+  sizeEl.textContent  = `${gridSize} × ${gridSize}`;
+  streakEl.textContent = streak;
+}
 
-    function buildGrid() {
-      gridEl.innerHTML = '';
-      gridEl.style.gridTemplateColumns = `repeat(${gridSize}, 84px)`;
-      const total = gridSize * gridSize;
-      for (let i = 0; i < total; i++) {
-        const tile = document.createElement('button');
-        tile.className = 'tile';
-        tile.type = 'button';
-        tile.dataset.index = i;
-        tile.addEventListener('click', () => onTileClick(i, tile));
-        gridEl.appendChild(tile);
-      }
-    }
+function buildGrid(){
+  gridEl.innerHTML = '';
+  gridEl.style.gridTemplateColumns = `repeat(${gridSize}, 90px)`;
+  const total = gridSize * gridSize;
+  for(let i=0;i<total;i++){
+    const card = makeCard(i);
+    gridEl.appendChild(card);
+  }
+}
 
-    function nextLevel() {
-      accepting = false;
-      input = [];
-      msgEl.textContent = `Memorize…`;
+function makeCard(index){
+  const card = document.createElement('button');
+  card.className = 'card';
+  card.type = 'button';
+  card.dataset.index = index;
 
-      if (level > 1 && (level - 1) % GROW_EVERY === 0) {
-        gridSize = Math.min(gridSize + 1, 7);
-        buildGrid();
-        updateHud();
-      }
+  const inner = document.createElement('div');
+  inner.className = 'inner';
 
-      const total = gridSize * gridSize;
-      const next = Math.floor(Math.random() * total);
-      sequence.push(next);
+  const back = document.createElement('div');
+  back.className = 'face back';
+  const front = document.createElement('div');
+  front.className = 'face front';
+  // front content is set on click (logo or X)
 
-      revealSequence().then(() => {
-        accepting = true;
-        msgEl.textContent = 'Your turn…';
+  inner.appendChild(back);
+  inner.appendChild(front);
+  card.appendChild(inner);
+
+  card.addEventListener('click', () => onCardClick(index, card));
+  return card;
+}
+
+async function nextLevel(){
+  accepting = false; input = [];
+  msgEl.textContent = 'Watch the signals…';
+
+  // Grow grid every GROW_EVERY levels
+  if(level > 1 && (level-1) % GROW_EVERY === 0){
+    gridSize = Math.min(gridSize + 1, MAX_GRID);
+    buildGrid(); updateHud();
+  }
+
+  // Extend sequence with a new random tile
+  const total = gridSize * gridSize;
+  sequence.push(Math.floor(Math.random()*total));
+
+  // Show signal (no flip, just glow on backs)
+  await revealSequence();
+
+  accepting = true;
+  msgEl.textContent = 'Your turn — flip the right card.';
+}
+
+async function revealSequence(){
+  const cards = [...gridEl.children];
+  for(const idx of sequence){
+    const card = cards[idx];
+    card.classList.add('signal');
+    await sleep(REVEAL_MS);
+    card.classList.remove('signal');
+    await sleep(STEP_PAUSE);
+  }
+}
+
+function onCardClick(index, card){
+  if(!accepting) return;
+
+  // small tap feedback on back
+  card.classList.remove('clickfx'); void card.offsetWidth; card.classList.add('clickfx');
+
+  input.push(index);
+  const expected = sequence[input.length - 1];
+  const isCorrect = index === expected;
+
+  // Render front face based on correctness
+  const front = card.querySelector('.front');
+  front.innerHTML = ''; // clear
+  const node = document.createElement('div');
+  node.className = isCorrect ? 'logo' : 'wrong';
+  front.appendChild(node);
+
+  // Flip the card to reveal
+  card.classList.add('flipped');
+
+  if(!isCorrect){
+    // Wrong → stop round
+    accepting = false; streak = 0; updateHud();
+    msgEl.textContent = `❌ Wrong card. You reached level ${level}.`;
+    startBtn.textContent = 'Try Again';
+    startBtn.style.setProperty('--glow', '#ff89a3');
+    startBtn.style.display = 'inline-block';
+    // Optionally flip back others after a short delay
+    return;
+  }
+
+  // If this click completes the sequence correctly
+  if(input.length === sequence.length){
+    accepting = false; level++; streak++; updateHud();
+    msgEl.textContent = '✅ Correct! Preparing next round…';
+
+    // Brief pause, then reset flipped visuals and go next
+    setTimeout(() => {
+      // flip back all cards (hide faces) before next signal
+      [...gridEl.children].forEach(c => {
+        c.classList.remove('flipped','clickfx','signal');
+        const f = c.querySelector('.front'); if(f) f.innerHTML = '';
       });
-    }
+      nextLevel();
+    }, NEXT_DELAY);
+  }else{
+    // More steps remaining in sequence
+    msgEl.textContent = `Good! Keep going… (${input.length}/${sequence.length})`;
+  }
+}
 
-    async function revealSequence() {
-      const buttons = [...gridEl.children];
-      for (const idx of sequence) {
-        const tile = buttons[idx];
-        tile.classList.add('reveal');
-        await sleep(REVEAL_MS);
-        tile.classList.remove('reveal');
-        await sleep(STEP_PAUSE);
-      }
-    }
-
-    function onTileClick(index, el) {
-      if (!accepting) return;
-      flash(el);
-      input.push(index);
-      const expected = sequence[input.length - 1];
-      if (index !== expected) {
-        el.classList.add('bad');
-        accepting = false;
-        streak = 0;
-        updateHud();
-        msgEl.textContent = `❌ Wrong tile. Reached level ${level}.`;
-        startBtn.textContent = 'Try Again';
-        startBtn.style.setProperty('--glow', '#ff89a3');
-        startBtn.style.display = 'inline-block';
-        return;
-      }
-
-      el.classList.add('good');
-      if (input.length === sequence.length) {
-        accepting = false;
-        level++;
-        streak++;
-        updateHud();
-        msgEl.textContent = '✅ Nice! Preparing next sequence…';
-        setTimeout(() => {
-          [...gridEl.children].forEach(b => b.classList.remove('good', 'bad', 'clicked'));
-          nextLevel();
-        }, NEXT_DELAY);
-      }
-    }
-
-    function flash(el) {
-      el.classList.remove('clicked');
-      void el.offsetWidth;
-      el.classList.add('clicked');
-    }
-
-    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-  </script>
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+</script>
 </body>
 </html>
