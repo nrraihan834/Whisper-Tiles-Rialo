@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Whisper Tiles — Rialo (Flip Edition)</title>
+<title>Whisper Tiles — Rialo (Flip + Sound + Highscore)</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -16,7 +16,7 @@
     margin:0; background:radial-gradient(1200px 700px at 50% -10%, #201330 0%, #0d0816 35%, var(--bg) 70%);
     color:var(--fg); font-family:'Cinzel',serif; display:grid; place-items:center;
   }
-  .wrap{width:min(92vw,840px); text-align:center}
+  .wrap{width:min(96vw,920px); text-align:center}
   h1{margin:.25rem 0 0}
   .sub{opacity:.85; margin:.25rem 0 1rem}
 
@@ -37,22 +37,16 @@
     position:absolute; inset:0; border-radius:14px; backface-visibility:hidden; overflow:hidden;
     border:1px solid rgba(0,255,255,.18); box-shadow:inset 0 0 24px rgba(0,0,0,.35);
   }
-  /* back (hidden) = black tile */
-  .back{
-    background:#000; 
-  }
-  /* subtle grid line + cyan edge */
+  /* back (hidden) */
+  .back{ background:#000; }
   .back::after{
     content:""; position:absolute; inset:0;
     background:linear-gradient(180deg, rgba(0,255,255,.08), transparent 35%),
                radial-gradient(120% 80% at 50% 0%, rgba(0,255,255,.08), transparent 60%);
     pointer-events:none;
   }
-  /* front (revealed) holds logo or X) */
-  .front{
-    transform:rotateY(180deg);
-    display:grid; place-items:center; background:#080a10;
-  }
+  /* front (revealed) */
+  .front{ transform:rotateY(180deg); display:grid; place-items:center; background:#080a10; }
   .front .logo{
     width:70%; height:70%; background-image:var(--logo-url);
     background-size:cover; background-position:center; border-radius:12px;
@@ -64,11 +58,9 @@
     box-shadow:0 0 18px rgba(255,94,126,.35), inset 0 0 30px rgba(255,94,126,.15);
     font-weight:700; color:#fff; text-shadow:0 0 10px rgba(255,94,126,.7);
   }
-  .front .wrong::before{
-    content:"✖"; font-size:48px; line-height:1;
-  }
+  .front .wrong::before{ content:"✖"; font-size:48px; line-height:1; }
 
-  /* signal during reveal (no flipping, just a pulse on back) */
+  /* reveal signal (no flip) */
   .signal .back{
     box-shadow:0 0 24px 6px rgba(0,255,255,.35), inset 0 0 40px rgba(0,255,255,.25);
     border-color:rgba(0,255,255,.6);
@@ -76,8 +68,8 @@
   }
   @keyframes pulse{0%{filter:brightness(1)}50%{filter:brightness(1.4)}100%{filter:brightness(1)}}
 
-  /* click feedback */
   .card.clickfx .back{transform:scale(.98)}
+
   .btn{
     --glow: var(--cyan);
     appearance:none;border:0;cursor:pointer;font:inherit;color:#0b1020;
@@ -99,6 +91,8 @@
       <div class="pill">Level: <strong id="level">1</strong></div>
       <div class="pill">Grid: <strong id="gridSize">3 × 3</strong></div>
       <div class="pill">Streak: <strong id="streak">0</strong></div>
+      <div class="pill">Best Lvl: <strong id="bestLevel">0</strong></div>
+      <div class="pill">Best Streak: <strong id="bestStreak">0</strong></div>
     </div>
 
     <div id="grid" aria-label="Tile grid"></div>
@@ -107,7 +101,7 @@
   </div>
 
 <script>
-/* -------- Config -------- */
+/* ===== Config ===== */
 const START_GRID = 3;
 const REVEAL_MS  = 650;   // signal glow duration
 const STEP_PAUSE = 220;   // pause between signals
@@ -115,7 +109,48 @@ const NEXT_DELAY = 800;   // delay before next round
 const GROW_EVERY = 3;     // grow grid every N levels
 const MAX_GRID   = 7;
 
-/* -------- State -------- */
+/* ===== Audio (WebAudio beeps, no files needed) ===== */
+let actx;
+function ensureAudio(){
+  if(!actx){
+    actx = new (window.AudioContext||window.webkitAudioContext)();
+  }
+}
+function tone({freq=440, dur=0.15, type='sine', gain=0.05, attack=0.005, release=0.08}){
+  if(!actx) return;
+  const t0 = actx.currentTime;
+  const osc = actx.createOscillator();
+  const g   = actx.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(gain, t0+attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+attack+Math.max(0,dur-attack)+release);
+  osc.connect(g).connect(actx.destination);
+  osc.start(t0);
+  osc.stop(t0+dur+release+0.05);
+}
+function chime(){ // soft two-note
+  ensureAudio();
+  tone({freq:880, dur:0.12, type:'sine', gain:0.05});
+  setTimeout(()=>tone({freq:1320, dur:0.12, type:'sine', gain:0.05}), 90);
+}
+function pop(){ // correct click
+  ensureAudio();
+  tone({freq:600, dur:0.09, type:'triangle', gain:0.05});
+}
+function buzz(){ // wrong
+  ensureAudio();
+  // low, slightly rough
+  tone({freq:140, dur:0.28, type:'square', gain:0.06});
+}
+
+/* ===== Highscore (localStorage) ===== */
+const LS_LEVEL  = 'WT_bestLevel';
+const LS_STREAK = 'WT_bestStreak';
+let bestLevel  = parseInt(localStorage.getItem(LS_LEVEL)  || '0', 10);
+let bestStreak = parseInt(localStorage.getItem(LS_STREAK) || '0', 10);
+
+/* ===== State ===== */
 let gridSize = START_GRID;
 let level = 1;
 let sequence = [];     // array of indexes (the correct sequence)
@@ -123,14 +158,21 @@ let input = [];        // player's current input
 let accepting = false;
 let streak = 0;
 
-const gridEl   = document.getElementById('grid');
-const levelEl  = document.getElementById('level');
-const sizeEl   = document.getElementById('gridSize');
-const streakEl = document.getElementById('streak');
-const msgEl    = document.getElementById('message');
-const startBtn = document.getElementById('startBtn');
+const gridEl     = document.getElementById('grid');
+const levelEl    = document.getElementById('level');
+const sizeEl     = document.getElementById('gridSize');
+const streakEl   = document.getElementById('streak');
+const bestLvlEl  = document.getElementById('bestLevel');
+const bestStrEl  = document.getElementById('bestStreak');
+const msgEl      = document.getElementById('message');
+const startBtn   = document.getElementById('startBtn');
+
+bestLvlEl.textContent = bestLevel;
+bestStrEl.textContent = bestStreak;
 
 startBtn.addEventListener('click', startGame);
+document.addEventListener('pointerdown', ensureAudio); // unlock audio on first interaction
+document.addEventListener('keydown', ensureAudio);
 
 function startGame(){
   level = 1; gridSize = START_GRID; sequence = []; input = []; streak = 0;
@@ -143,6 +185,8 @@ function updateHud(){
   levelEl.textContent = level;
   sizeEl.textContent  = `${gridSize} × ${gridSize}`;
   streakEl.textContent = streak;
+  bestLvlEl.textContent = bestLevel;
+  bestStrEl.textContent = bestStreak;
 }
 
 function buildGrid(){
@@ -168,7 +212,6 @@ function makeCard(index){
   back.className = 'face back';
   const front = document.createElement('div');
   front.className = 'face front';
-  // front content is set on click (logo or X)
 
   inner.appendChild(back);
   inner.appendChild(front);
@@ -182,17 +225,14 @@ async function nextLevel(){
   accepting = false; input = [];
   msgEl.textContent = 'Watch the signals…';
 
-  // Grow grid every GROW_EVERY levels
   if(level > 1 && (level-1) % GROW_EVERY === 0){
     gridSize = Math.min(gridSize + 1, MAX_GRID);
     buildGrid(); updateHud();
   }
 
-  // Extend sequence with a new random tile
   const total = gridSize * gridSize;
   sequence.push(Math.floor(Math.random()*total));
 
-  // Show signal (no flip, just glow on backs)
   await revealSequence();
 
   accepting = true;
@@ -204,6 +244,7 @@ async function revealSequence(){
   for(const idx of sequence){
     const card = cards[idx];
     card.classList.add('signal');
+    chime();
     await sleep(REVEAL_MS);
     card.classList.remove('signal');
     await sleep(STEP_PAUSE);
@@ -213,42 +254,43 @@ async function revealSequence(){
 function onCardClick(index, card){
   if(!accepting) return;
 
-  // small tap feedback on back
   card.classList.remove('clickfx'); void card.offsetWidth; card.classList.add('clickfx');
 
   input.push(index);
   const expected = sequence[input.length - 1];
   const isCorrect = index === expected;
 
-  // Render front face based on correctness
   const front = card.querySelector('.front');
-  front.innerHTML = ''; // clear
+  front.innerHTML = '';
   const node = document.createElement('div');
   node.className = isCorrect ? 'logo' : 'wrong';
   front.appendChild(node);
 
-  // Flip the card to reveal
   card.classList.add('flipped');
 
   if(!isCorrect){
-    // Wrong → stop round
-    accepting = false; streak = 0; updateHud();
+    // WRONG -> sound + end + save best
+    buzz();
+    accepting = false;
+    if(level-1 > bestLevel){ bestLevel = level-1; localStorage.setItem(LS_LEVEL, String(bestLevel)); }
+    if(streak   > bestStreak){ bestStreak = streak; localStorage.setItem(LS_STREAK, String(bestStreak)); }
+    updateHud();
     msgEl.textContent = `❌ Wrong card. You reached level ${level}.`;
     startBtn.textContent = 'Try Again';
     startBtn.style.setProperty('--glow', '#ff89a3');
     startBtn.style.display = 'inline-block';
-    // Optionally flip back others after a short delay
     return;
   }
 
-  // If this click completes the sequence correctly
+  // CORRECT -> pop
+  pop();
+
   if(input.length === sequence.length){
+    // Round complete
     accepting = false; level++; streak++; updateHud();
     msgEl.textContent = '✅ Correct! Preparing next round…';
-
-    // Brief pause, then reset flipped visuals and go next
     setTimeout(() => {
-      // flip back all cards (hide faces) before next signal
+      // flip back all
       [...gridEl.children].forEach(c => {
         c.classList.remove('flipped','clickfx','signal');
         const f = c.querySelector('.front'); if(f) f.innerHTML = '';
@@ -256,7 +298,6 @@ function onCardClick(index, card){
       nextLevel();
     }, NEXT_DELAY);
   }else{
-    // More steps remaining in sequence
     msgEl.textContent = `Good! Keep going… (${input.length}/${sequence.length})`;
   }
 }
